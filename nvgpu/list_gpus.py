@@ -8,8 +8,10 @@ import six
 from tabulate import tabulate
 from termcolor import colored
 import warnings
+import types
 
 from nvgpu.nvml import nvml_context
+from nvgpu import _run_cmd
 
 
 def device_status(device_index):
@@ -29,7 +31,14 @@ def device_status(device_index):
         # old API in nvidia-ml-py
         clock_mhz = nv.nvmlDeviceGetClock(handle, nv.NVML_CLOCK_SM, 0)
     temperature = nv.nvmlDeviceGetTemperature(handle, nv.NVML_TEMPERATURE_GPU)
-    memory = nv.nvmlDeviceGetMemoryInfo(handle)
+    if device_name == 'NVIDIA GB10':
+        lines = _run_cmd(['free', '-b'])
+        avail_memory = float(lines[1].split()[-1])
+        total_memory = float(lines[1].split()[1])
+        used_memory = total_memory - avail_memory
+        memory = types.SimpleNamespace(total=total_memory, free=avail_memory, used=used_memory)
+    else:
+        memory = nv.nvmlDeviceGetMemoryInfo(handle)
     pids = []
     users = []
     dates = []

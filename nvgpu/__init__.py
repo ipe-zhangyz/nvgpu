@@ -10,20 +10,30 @@ def gpu_info():
     gpu_infos = [dict(zip(['index', 'type', 'uuid'], info)) for info in gpu_infos]
     gpu_count = len(gpus)
 
-    lines = _run_cmd(['nvidia-smi'])
-    cuda_version = float(lines[2].split('CUDA Version: ')[1].split(' ')[0])
-    if cuda_version < 11:
-        line_distance = 3
-        selected_lines = lines[7:7 + line_distance * gpu_count]
+    if gpu_infos[0]['type'] == 'NVIDIA GB10':
+        lines = _run_cmd(['free', '-m'])
+        avail_memory = float(lines[1].split()[-1])
+        total_memory = float(lines[1].split()[1])
+        used_memory = total_memory - avail_memory
+        gpu_infos[0]['mem_total'] = total_memory
+        gpu_infos[0]['mem_used'] = used_memory
+        gpu_infos[0]['mem_used_percent'] = 100. * used_memory / total_memory
+
     else:
-        line_distance = 4
-        selected_lines = lines[8:8 + line_distance * gpu_count]
-    for i in range(gpu_count):
-        mem_used, mem_total = [int(m.strip().replace('MiB', '')) for m in
-                               selected_lines[line_distance * i + 1].split('|')[2].strip().split('/')]
-        gpu_infos[i]['mem_used'] = mem_used
-        gpu_infos[i]['mem_total'] = mem_total
-        gpu_infos[i]['mem_used_percent'] = 100. * mem_used / mem_total
+        lines = _run_cmd(['nvidia-smi'])
+        cuda_version = float(lines[2].split('CUDA Version: ')[1].split(' ')[0])
+        if cuda_version < 11:
+            line_distance = 3
+            selected_lines = lines[7:7 + line_distance * gpu_count]
+        else:
+            line_distance = 4
+            selected_lines = lines[8:8 + line_distance * gpu_count]
+        for i in range(gpu_count):
+            mem_used, mem_total = [int(m.strip().replace('MiB', '')) for m in
+                                   selected_lines[line_distance * i + 1].split('|')[2].strip().split('/')]
+            gpu_infos[i]['mem_used'] = mem_used
+            gpu_infos[i]['mem_total'] = mem_total
+            gpu_infos[i]['mem_used_percent'] = 100. * mem_used / mem_total
 
     return gpu_infos
 
